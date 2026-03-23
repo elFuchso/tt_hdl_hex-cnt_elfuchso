@@ -36,7 +36,7 @@ async def test_project(dut):
     
     for i in range(10):
         # We wait for the 'tick'. 
-        await ClockCycles(dut.clk, 1) 
+        await ClockCycles(dut.clk, 17) 
         
         # Check uo_out[6:0]. We use & 0x7F to ignore the Mode Indictor (bit 7)
         current_segments = int(dut.uo_out.value) & 0x7F
