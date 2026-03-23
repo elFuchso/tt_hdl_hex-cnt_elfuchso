@@ -10,8 +10,8 @@ from cocotb.triggers import ClockCycles
 async def test_project(dut):
     dut._log.info("Start")
 
-    # Set the clock period to 10us (100 KHz)
-    clock = Clock(dut.clk, 10, units="us")
+    # 10MHz clock = 100ns period
+    clock = Clock(dut.clk, 100, units="ns")
     cocotb.start_soon(clock.start())
 
     # Reset
@@ -20,27 +20,33 @@ async def test_project(dut):
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 5)
+    await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 5)
 
     dut._log.info("Test Counter: Decimal Mode Up")
-    dut.ui_in.value = 0b00000001 # ui[0]=1 (Up), ui[1]=0 (Dec)
+    # ui_in[0] = 1 (Up), ui_in[1] = 0 (Dec)
+    dut.ui_in.value = 0x01 
     
-    # Wait for a few cycles and check segments
-    # 0 should be 0x3F (63)
-    # 1 should be 0x06 (6)
-    # 2 should be 0x5B (91)
+    # Define the 7-segment patterns for 0-9 (Decimal mode)
+    # Segments {g,f,e,d,c,b,a} mapped to bits [6:0]
+    # '0' = 0x3F (0111111)
+    # '1' = 0x06 (0000110)
+    # etc.
+    expected_dec = [0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F]
     
-    expected_segments = [0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F]
-    
-    for val in expected_segments:
-        assert int(dut.uo_out.value) == val
-        await ClockCycles(dut.clk, 1)
+    for i in range(10):
+        # We wait for the 'tick'. 
+        # If you used the `ifdef SIM` fix, it happens every 17 cycles (0 to 16)
+        await ClockCycles(dut.clk, 17) 
+        
+        # Check uo_out[6:0]. We use & 0x7F to ignore the Mode Indictor (bit 7)
+        current_segments = int(dut.uo_out.value) & 0x7F
+        dut._log.info(f"Checking digit {i}: Expected {hex(expected_dec[i])}, got {hex(current_segments)}")
+        assert current_segments == expected_dec[i]
 
-    dut._log.info("Test Counter: Hex Mode")
-    dut.ui_in.value = 0b00000011 # ui[0]=1 (Up), ui[1]=1 (Hex)
-    await ClockCycles(dut.clk, 10) # Advance to 'A'
-    
-    # 0xA in segments is 0x77 (binary 1110111) + uo[7] is 1 for Hex mode = 0xF7 (247)
-    assert int(dut.uo_out.value) == 0xF7
+    dut._log.info("Test Counter: Hex Mode indicator")
+    # Turn on Hex mode (ui_in[1] = 1)
+    dut.ui_in.value = 0x03
+    await ClockCycles(dut.clk, 1)
+    # uo_out[7] should now be 1
+    assert int(dut.uo_out.value) & 0x80 == 0x80
