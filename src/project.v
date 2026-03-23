@@ -19,6 +19,11 @@ module tt_um_hexcnt_elfuchso (
     // Pin assignment for clarity
     wire up_down = ui_in[0];    // 1 for Up, 0 for Down
     wire mode_hex = ui_in[1];   // 1 for Hex (0-F), 0 for Decimal (0-9)
+
+    // assign unused pins
+    assign ui_
+    assign uio_out = 0;
+    assign uio_oe  = 0;
     
     // Internal signals
     reg [23:0] clk_divider;  // To slow down the ~10MHz clock
@@ -84,5 +89,7 @@ module tt_um_hexcnt_elfuchso (
     // Assign segments to outputs. uo[7] is the decimal point (mode indicator)
     assign uo_out[6:0] = segments;
     assign uo_out[7] = mode_hex; // DP lights up if we are in Hex mode
+
+    wire _unused = &{uo_in[7:2], ena, rst_n, 1'b0};
 
 endmodule
