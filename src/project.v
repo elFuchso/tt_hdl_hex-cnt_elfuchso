@@ -28,9 +28,14 @@ module tt_um_hexcnt_elfuchso (
     reg [23:0] clk_divider;  // To slow down the ~10MHz clock
     reg [3:0]  counter;      // The 4-bit value to display
 
-    // Clock divider to generate a "tick" roughly every 1.6 million cycles
-    // At 10MHz, this is about 6 counts per second.
-    wire tick = (clk_divider == 24'd1600000);
+    // Clock divider: 1.6M cycles for hardware (~6Hz), 
+    // but only 16 cycles for simulation so tests run fast.
+    wire tick;
+    `ifdef SIM
+        assign tick = (clk_divider == 24'd16); 
+    `else
+        assign tick = (clk_divider == 24'd1600000);
+    `endif
 
     always @(posedge clk) begin
         if (!rst_n) begin
